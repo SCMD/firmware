@@ -1,0 +1,16 @@
+Creating   'work4a.eep'
+Creating   'work4a.obj'
+Creating   'work4a.lst'
+
+Assembling 'work4a.asm'
+Including  'work4a.vec'
+Including  'work4a.inc'
+
+Program memory usage:
+Code             :  549 words
+Constants (dw/db):   14 words
+Unused           :    0 words
+Total            :  563 words
+
+Assembly complete with no errors.
+Deleting   'work4a.eep'
