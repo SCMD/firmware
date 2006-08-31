@@ -28,37 +28,46 @@ Data Stack size     : 256
 #include <stdio.h>
 #include <delay.h>
 
-int result;
-int counter;
-int i;
+bit sample=0;
 
-// ADC interrupt service routine
-interrupt [ADC_INT] void adc_isr(void){
 
-result += ADCW;
-counter++;
-if (i == 3)PORTB ^= 0x01;
+unsigned int read_adc(void)
+{
+unsigned int counter0 = 16, counter1 = 16, result0=0, result1=0;
 
-if (counter == 15){
-result = result/15;
-printf("C0.%i\n",result);
-putchar(0x0D);
-counter=0;
-result=0;
+ADCSRA |= 0x20;
+ADCSRA |= 0x40;
+
+while (counter0){
+
+while (counter1){
+while ((ADCSRA & 0x10)==0);
+ADCSRA |= 0x10;
+result1 += ADCW;
+counter1--;
 }
+result1 >>= 2;
 
+result0 += result1;
+result1 = 0;
+counter1 = 16;
+counter0--;
+}
+ADCSRA ^=0x20;
+result0 /= 16;
+return result0;
 }
 
 // Declare your global variables here
 
 void init_devices(void){
 // Declare your local variables here
-PORTB = 0xFF;
-DDRB = 0x07;
+PORTB=0x03;
+DDRB=0x01;
 PORTC=0x00;
 DDRC=0x00;
-PORTD=0x00;
-DDRD=0x00;
+PORTD=0x80;
+DDRD=0x80;
 
 // Timer/Counter 0 initialization
 // Clock source: System Clock
@@ -83,19 +92,25 @@ MCUCR=0x00;
 // USART Mode: Asynchronous
 // USART Baud rate: 9600
 
+//UCSRA=0x00;
+//UCSRB=0x00;
+//UCSRC=0x86;
+//UBRRL = 0x19; //set baud rate lo
+//UBRRH = 0x00; //set baud rate hi
+//UCSRB = 0x08;
+
+// USART initialization
+// Communication Parameters: 8 Data, 1 Stop, No Parity
+// USART Receiver: Off
+// USART Transmitter: On
+// USART Mode: Asynchronous
+// USART Baud rate: 19200
 UCSRA=0x00;
 UCSRB=0x00;
 UCSRC=0x86;
-UBRRL = 0x19; //set baud rate lo
-UBRRH = 0x00; //set baud rate hi
-UCSRB = 0x08;
-
-//UCSRA=0x02;
-//UCSRB=0x00;
-//UCSRC=0x86;
-//UBRRH=0x00;
-//UBRRL=0x0C;
-//UCSRB=0x08;
+UBRRH=0x00;
+UBRRL=0x0C;
+UCSRB=0x08;
 
 // Analog Comparator initialization
 // Analog Comparator: Off
@@ -105,11 +120,13 @@ SFIOR=0x00;
 
 // ADC initialization
 // ADC Clock frequency: 125,000 kHz
-// ADC Voltage Reference: AREF pin
-//ADMUX=0x00;
-ADMUX=0x40;
-ADCSRA=0x8D;
-//ADCSRA=0x8E;
+// ADC Voltage Reference: internal
+ADMUX=0xC0; //internal reference
+//ADMUX=0x40; //AVCC
+//ADCSRA=0x8D; // INT
+
+ADCSRA=0x85; //freerunning
+
 // Global enable interrupts
 #asm("sei")
 }
@@ -118,22 +135,28 @@ ADCSRA=0x8D;
 void main(void){
 
 init_devices();
-PORTB ^= 0x01;
+PORTB.0 = 1;
+PORTD.7 = 0;
+
 
 while (1)
 {
-delay_ms(20);
-ADCSRA |= 0x40;
 
-if (i == 50){
-PORTB ^= 0x01;
-i=0;
+  if (sample){
+        delay_ms(20);
+        printf("C0.%i\n",read_adc());
+        putchar(0x0D);
+  }
+
+  if (!PINB.1) {
+        sample ^= 1;
+        PORTB.0 ^= 1;
+        PORTD.7 ^= 1;
+        while (!PINB.1);
+  }
+
+
 }
-
-i++;
-
-};
-
 }
 
 

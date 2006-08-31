@@ -978,245 +978,301 @@ __GLOBAL_INI_END:
 ;      28 #include <stdio.h>
 ;      29 #include <delay.h>
 ;      30
-;      31 int result;
-;      32 int counter;
-;      33 int i;
-;      34
-;      35 // ADC interrupt service routine
-;      36 interrupt [ADC_INT] void adc_isr(void){
+;      31 bit sample=0;
+;      32
+;      33
+;      34 unsigned int read_adc(void)
+;      35 {
 
 	.CSEG
-_adc_isr:
-	ST   -Y,R0
-	ST   -Y,R1
-	ST   -Y,R15
-	ST   -Y,R22
-	ST   -Y,R23
-	ST   -Y,R24
-	ST   -Y,R25
-	ST   -Y,R26
-	ST   -Y,R27
-	ST   -Y,R30
-	ST   -Y,R31
-	IN   R30,SREG
-	ST   -Y,R30
+_read_adc:
+;      36 unsigned int counter0 = 16, counter1 = 16, result0=0, result1=0;
 ;      37
-;      38 result += ADCW;
+;      38 ADCSRA |= 0x20;
+	SBIW R28,2
+	LDI  R24,2
+	LDI  R26,LOW(0)
+	LDI  R27,HIGH(0)
+	LDI  R30,LOW(_0x3*2)
+	LDI  R31,HIGH(_0x3*2)
+	RCALL __INITLOCB
+	RCALL __SAVELOCR6
+;	counter0 -> R16,R17
+;	counter1 -> R18,R19
+;	result0 -> R20,R21
+;	result1 -> Y+6
+	LDI  R16,16
+	LDI  R17,0
+	LDI  R18,16
+	LDI  R19,0
+	LDI  R20,0
+	LDI  R21,0
+	SBI  0x6,5
+;      39 ADCSRA |= 0x40;
+	SBI  0x6,6
+;      40
+;      41 while (counter0){
+_0x4:
+	MOV  R0,R16
+	OR   R0,R17
+	BREQ _0x6
+;      42
+;      43 while (counter1){
+_0x7:
+	MOV  R0,R18
+	OR   R0,R19
+	BREQ _0x9
+;      44 while ((ADCSRA & 0x10)==0);
+_0xA:
+	SBIS 0x6,4
+	RJMP _0xA
+;      45 ADCSRA |= 0x10;
+	SBI  0x6,4
+;      46 result1 += ADCW;
 	IN   R30,0x4
 	IN   R31,0x4+1
-	__ADDWRR 4,5,30,31
-;      39 counter++;
-	LDI  R30,LOW(1)
-	LDI  R31,HIGH(1)
-	__ADDWRR 6,7,30,31
-;      40 if (i == 3)PORTB ^= 0x01;
-	LDI  R30,LOW(3)
-	LDI  R31,HIGH(3)
-	CP   R30,R8
-	CPC  R31,R9
-	BRNE _0x3
-	RCALL SUBOPT_0x0
-;      41
-;      42 if (counter == 15){
-_0x3:
-	LDI  R30,LOW(15)
-	LDI  R31,HIGH(15)
-	CP   R30,R6
-	CPC  R31,R7
-	BRNE _0x4
-;      43 result = result/15;
-	__GETW2R 4,5
-	RCALL __DIVW21
-	__PUTW1R 4,5
-;      44 printf("C0.%i\n",result);
-	__POINTW1FN _0,0
-	ST   -Y,R31
-	ST   -Y,R30
-	__GETW1R 4,5
-	RCALL __CWD1
-	RCALL __PUTPARD1
-	LDI  R24,4
-	RCALL _printf
-	ADIW R28,6
-;      45 putchar(0x0D);
-	LDI  R30,LOW(13)
-	RCALL SUBOPT_0x1
-;      46 counter=0;
-	CLR  R6
-	CLR  R7
-;      47 result=0;
-	CLR  R4
-	CLR  R5
+	LDD  R26,Y+6
+	LDD  R27,Y+6+1
+	ADD  R30,R26
+	ADC  R31,R27
+	STD  Y+6,R30
+	STD  Y+6+1,R31
+;      47 counter1--;
+	__SUBWRN 18,19,1
 ;      48 }
-;      49
-;      50 }
-_0x4:
-	LD   R30,Y+
-	OUT  SREG,R30
-	LD   R31,Y+
-	LD   R30,Y+
-	LD   R27,Y+
-	LD   R26,Y+
-	LD   R25,Y+
-	LD   R24,Y+
-	LD   R23,Y+
-	LD   R22,Y+
-	LD   R15,Y+
-	LD   R1,Y+
-	LD   R0,Y+
-	RETI
-;      51
-;      52 // Declare your global variables here
-;      53
-;      54 void init_devices(void){
+	RJMP _0x7
+_0x9:
+;      49 result1 >>= 2;
+	LDD  R30,Y+6
+	LDD  R31,Y+6+1
+	RCALL __LSRW2
+	STD  Y+6,R30
+	STD  Y+6+1,R31
+;      50
+;      51 result0 += result1;
+	__ADDWRR 20,21,30,31
+;      52 result1 = 0;
+	LDI  R30,0
+	STD  Y+6,R30
+	STD  Y+6+1,R30
+;      53 counter1 = 16;
+	__GETWRN 18,19,16
+;      54 counter0--;
+	__SUBWRN 16,17,1
+;      55 }
+	RJMP _0x4
+_0x6:
+;      56 ADCSRA ^=0x20;
+	IN   R30,0x6
+	LDI  R26,LOW(32)
+	EOR  R30,R26
+	OUT  0x6,R30
+;      57 result0 /= 16;
+	__GETW1R 20,21
+	RCALL __LSRW4
+	__PUTW1R 20,21
+;      58 return result0;
+	__GETW1R 20,21
+	RCALL __LOADLOCR6
+	ADIW R28,8
+	RET
+;      59 }
+;      60
+;      61 // Declare your global variables here
+;      62
+;      63 void init_devices(void){
 _init_devices:
-;      55 // Declare your local variables here
-;      56 PORTB = 0xFF;
-	LDI  R30,LOW(255)
+;      64 // Declare your local variables here
+;      65 PORTB=0x03;
+	LDI  R30,LOW(3)
 	OUT  0x18,R30
-;      57 DDRB = 0x07;
-	LDI  R30,LOW(7)
+;      66 DDRB=0x01;
+	LDI  R30,LOW(1)
 	OUT  0x17,R30
-;      58 PORTC=0x00;
+;      67 PORTC=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x15,R30
-;      59 DDRC=0x00;
+;      68 DDRC=0x00;
 	OUT  0x14,R30
-;      60 PORTD=0x00;
+;      69 PORTD=0x80;
+	LDI  R30,LOW(128)
 	OUT  0x12,R30
-;      61 DDRD=0x00;
+;      70 DDRD=0x80;
 	OUT  0x11,R30
-;      62
-;      63 // Timer/Counter 0 initialization
-;      64 // Clock source: System Clock
-;      65 // Prescale: 1024 kHz
-;      66 //TCCR0 = 0x00; //stop
-;      67 //TCNT0 = 0xB8;//B8; //set count
-;      68 //TCCR0 = 0x02; //start timer
-;      69
-;      70
-;      71 // External Interrupt(s) initialization
-;      72 // INT0: Off
-;      73 // INT1: Off
-;      74 MCUCR=0x00;
-	OUT  0x35,R30
-;      75
-;      76 // Timer(s)/Counter(s) Interrupt(s) initialization
-;      77 //TIMSK=0x01;
+;      71
+;      72 // Timer/Counter 0 initialization
+;      73 // Clock source: System Clock
+;      74 // Prescale: 1024 kHz
+;      75 //TCCR0 = 0x00; //stop
+;      76 //TCNT0 = 0xB8;//B8; //set count
+;      77 //TCCR0 = 0x02; //start timer
 ;      78
-;      79 // USART initialization
-;      80 // Communication Parameters: 8 Data, 1 Stop, No Parity
-;      81 // USART Receiver: Off
-;      82 // USART Transmitter: On
-;      83 // USART Mode: Asynchronous
-;      84 // USART Baud rate: 9600
-;      85
-;      86 UCSRA=0x00;
+;      79
+;      80 // External Interrupt(s) initialization
+;      81 // INT0: Off
+;      82 // INT1: Off
+;      83 MCUCR=0x00;
+	LDI  R30,LOW(0)
+	OUT  0x35,R30
+;      84
+;      85 // Timer(s)/Counter(s) Interrupt(s) initialization
+;      86 //TIMSK=0x01;
+;      87
+;      88 // USART initialization
+;      89 // Communication Parameters: 8 Data, 1 Stop, No Parity
+;      90 // USART Receiver: Off
+;      91 // USART Transmitter: On
+;      92 // USART Mode: Asynchronous
+;      93 // USART Baud rate: 9600
+;      94
+;      95 //UCSRA=0x00;
+;      96 //UCSRB=0x00;
+;      97 //UCSRC=0x86;
+;      98 //UBRRL = 0x19; //set baud rate lo
+;      99 //UBRRH = 0x00; //set baud rate hi
+;     100 //UCSRB = 0x08;
+;     101
+;     102 // USART initialization
+;     103 // Communication Parameters: 8 Data, 1 Stop, No Parity
+;     104 // USART Receiver: Off
+;     105 // USART Transmitter: On
+;     106 // USART Mode: Asynchronous
+;     107 // USART Baud rate: 19200
+;     108 UCSRA=0x00;
 	OUT  0xB,R30
-;      87 UCSRB=0x00;
+;     109 UCSRB=0x00;
 	OUT  0xA,R30
-;      88 UCSRC=0x86;
+;     110 UCSRC=0x86;
 	LDI  R30,LOW(134)
 	OUT  0x20,R30
-;      89 UBRRL = 0x19; //set baud rate lo
-	LDI  R30,LOW(25)
-	OUT  0x9,R30
-;      90 UBRRH = 0x00; //set baud rate hi
+;     111 UBRRH=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x20,R30
-;      91 UCSRB = 0x08;
+;     112 UBRRL=0x0C;
+	LDI  R30,LOW(12)
+	OUT  0x9,R30
+;     113 UCSRB=0x08;
 	LDI  R30,LOW(8)
 	OUT  0xA,R30
-;      92
-;      93 //UCSRA=0x02;
-;      94 //UCSRB=0x00;
-;      95 //UCSRC=0x86;
-;      96 //UBRRH=0x00;
-;      97 //UBRRL=0x0C;
-;      98 //UCSRB=0x08;
-;      99
-;     100 // Analog Comparator initialization
-;     101 // Analog Comparator: Off
-;     102 // Analog Comparator Input Capture by Timer/Counter 1: Off
-;     103 ACSR=0x80;
+;     114
+;     115 // Analog Comparator initialization
+;     116 // Analog Comparator: Off
+;     117 // Analog Comparator Input Capture by Timer/Counter 1: Off
+;     118 ACSR=0x80;
 	LDI  R30,LOW(128)
 	OUT  0x8,R30
-;     104 SFIOR=0x00;
+;     119 SFIOR=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x30,R30
-;     105
-;     106 // ADC initialization
-;     107 // ADC Clock frequency: 125,000 kHz
-;     108 // ADC Voltage Reference: AREF pin
-;     109 //ADMUX=0x00;
-;     110 ADMUX=0x40;
-	LDI  R30,LOW(64)
+;     120
+;     121 // ADC initialization
+;     122 // ADC Clock frequency: 125,000 kHz
+;     123 // ADC Voltage Reference: internal
+;     124 ADMUX=0xC0; //internal reference
+	LDI  R30,LOW(192)
 	OUT  0x7,R30
-;     111 ADCSRA=0x8D;
-	LDI  R30,LOW(141)
+;     125 //ADMUX=0x40; //AVCC
+;     126 //ADCSRA=0x8D; // INT
+;     127
+;     128 ADCSRA=0x85; //freerunning
+	LDI  R30,LOW(133)
 	OUT  0x6,R30
-;     112 //ADCSRA=0x8E;
-;     113 // Global enable interrupts
-;     114 #asm("sei")
+;     129
+;     130 // Global enable interrupts
+;     131 #asm("sei")
 	sei
-;     115 }
+;     132 }
 	RET
-;     116
-;     117
-;     118 void main(void){
+;     133
+;     134
+;     135 void main(void){
 _main:
-;     119
-;     120 init_devices();
+;     136
+;     137 init_devices();
 	RCALL _init_devices
-;     121 PORTB ^= 0x01;
-	RCALL SUBOPT_0x0
-;     122
-;     123 while (1)
-_0x5:
-;     124 {
-;     125 delay_ms(20);
+;     138 PORTB.0 = 1;
+	SBI  0x18,0
+;     139 PORTD.7 = 0;
+	CBI  0x12,7
+;     140
+;     141
+;     142 while (1)
+_0xD:
+;     143 {
+;     144
+;     145   if (sample){
+	SBRS R2,0
+	RJMP _0x10
+;     146         delay_ms(20);
 	LDI  R30,LOW(20)
 	LDI  R31,HIGH(20)
 	ST   -Y,R31
 	ST   -Y,R30
 	RCALL _delay_ms
-;     126 ADCSRA |= 0x40;
-	SBI  0x6,6
-;     127
-;     128 if (i == 50){
-	LDI  R30,LOW(50)
-	LDI  R31,HIGH(50)
-	CP   R30,R8
-	CPC  R31,R9
-	BRNE _0x8
-;     129 PORTB ^= 0x01;
+;     147         printf("C0.%i\n",read_adc());
+	__POINTW1FN _0,0
+	ST   -Y,R31
+	ST   -Y,R30
+	RCALL _read_adc
+	CLR  R22
+	CLR  R23
+	RCALL __PUTPARD1
+	LDI  R24,4
+	RCALL _printf
+	ADIW R28,6
+;     148         putchar(0x0D);
+	LDI  R30,LOW(13)
 	RCALL SUBOPT_0x0
-;     130 i=0;
-	CLR  R8
-	CLR  R9
-;     131 }
-;     132
-;     133 i++;
-_0x8:
-	LDI  R30,LOW(1)
-	LDI  R31,HIGH(1)
-	__ADDWRR 8,9,30,31
-;     134
-;     135 };
-	RJMP _0x5
-;     136
-;     137 }
-_0x9:
-	RJMP _0x9
-;     138
-;     139
-;     140
-;     141
-;     142
-;     143
-;     144
-;     145
-;     146
+;     149   }
+;     150
+;     151   if (!PINB.1) {
+_0x10:
+	SBIC 0x16,1
+	RJMP _0x11
+;     152         sample ^= 1;
+	LDI  R30,0
+	SBRC R2,0
+	LDI  R30,1
+	RCALL SUBOPT_0x1
+	BLD  R2,0
+;     153         PORTB.0 ^= 1;
+	LDI  R30,0
+	SBIC 0x18,0
+	LDI  R30,1
+	RCALL SUBOPT_0x1
+	IN   R26,0x18
+	BLD  R26,0
+	OUT  0x18,R26
+;     154         PORTD.7 ^= 1;
+	LDI  R30,0
+	SBIC 0x12,7
+	LDI  R30,1
+	RCALL SUBOPT_0x1
+	IN   R26,0x12
+	BLD  R26,7
+	OUT  0x12,R26
+;     155         while (!PINB.1);
+_0x12:
+	SBIS 0x16,1
+	RJMP _0x12
+;     156   }
+;     157
+;     158
+;     159 }
+_0x11:
+	RJMP _0xD
+;     160 }
+_0x15:
+	RJMP _0x15
+;     161
+;     162
+;     163
+;     164
+;     165
+;     166
+;     167
+;     168
+;     169
 
 _getchar:
      sbis usr,rxc
@@ -1234,7 +1290,7 @@ __put_G2:
 	put:
 	RCALL SUBOPT_0x2
 	SBIW R30,0
-	BREQ _0xA
+	BREQ _0x16
 	RCALL SUBOPT_0x2
 	ADIW R30,1
 	ST   X+,R30
@@ -1242,18 +1298,18 @@ __put_G2:
 	SBIW R30,1
 	LDD  R26,Y+2
 	STD  Z+0,R26
-	RJMP _0xB
-_0xA:
+	RJMP _0x17
+_0x16:
 	LDD  R30,Y+2
-	RCALL SUBOPT_0x1
-_0xB:
+	RCALL SUBOPT_0x0
+_0x17:
 	ADIW R28,3
 	RET
 __print_G2:
 	SBIW R28,4
 	RCALL __SAVELOCR6
 	LDI  R16,0
-_0xC:
+_0x18:
 	LDD  R30,Y+14
 	LDD  R31,Y+14+1
 	ADIW R30,1
@@ -1261,71 +1317,71 @@ _0xC:
 	STD  Y+14+1,R31
 	RCALL SUBOPT_0x3
 	BRNE PC+2
-	RJMP _0xE
+	RJMP _0x1A
 	MOV  R30,R16
 	CPI  R30,0
-	BRNE _0x12
+	BRNE _0x1E
 	CPI  R18,37
-	BRNE _0x13
+	BRNE _0x1F
 	LDI  R16,LOW(1)
-	RJMP _0x14
-_0x13:
+	RJMP _0x20
+_0x1F:
 	RCALL SUBOPT_0x4
-_0x14:
-	RJMP _0x11
-_0x12:
+_0x20:
+	RJMP _0x1D
+_0x1E:
 	CPI  R30,LOW(0x1)
-	BRNE _0x15
+	BRNE _0x21
 	CPI  R18,37
-	BRNE _0x16
+	BRNE _0x22
 	RCALL SUBOPT_0x4
 	LDI  R16,LOW(0)
-	RJMP _0x11
-_0x16:
+	RJMP _0x1D
+_0x22:
 	LDI  R16,LOW(2)
 	LDI  R19,LOW(0)
 	LDI  R17,LOW(0)
 	CPI  R18,43
-	BRNE _0x17
+	BRNE _0x23
 	LDI  R19,LOW(43)
-	RJMP _0x11
-_0x17:
+	RJMP _0x1D
+_0x23:
 	CPI  R18,32
-	BRNE _0x18
+	BRNE _0x24
 	LDI  R19,LOW(32)
-	RJMP _0x11
-_0x18:
-	RJMP _0x19
-_0x15:
+	RJMP _0x1D
+_0x24:
+	RJMP _0x25
+_0x21:
 	CPI  R30,LOW(0x2)
-	BRNE _0x1A
-_0x19:
+	BRNE _0x26
+_0x25:
 	CPI  R18,48
-	BRNE _0x1B
+	BRNE _0x27
 	ORI  R17,LOW(16)
 	LDI  R16,LOW(5)
-	RJMP _0x11
-_0x1B:
-	RJMP _0x1C
-_0x1A:
+	RJMP _0x1D
+_0x27:
+	RJMP _0x28
+_0x26:
 	CPI  R30,LOW(0x5)
 	BREQ PC+2
-	RJMP _0x11
-_0x1C:
+	RJMP _0x1D
+_0x28:
 	MOV  R30,R18
 	CPI  R30,LOW(0x63)
-	BRNE _0x21
+	BRNE _0x2D
 	RCALL SUBOPT_0x5
 	LD   R30,X
 	ST   -Y,R30
 	RCALL SUBOPT_0x6
-	RJMP _0x22
-_0x21:
+	RJMP _0x2E
+_0x2D:
 	CPI  R30,LOW(0x73)
-	BRNE _0x24
+	BRNE _0x30
 	RCALL SUBOPT_0x5
 	RCALL SUBOPT_0x7
-_0x25:
+_0x31:
 	LDD  R26,Y+6
 	LDD  R27,Y+6+1
 	LD   R30,X+
@@ -1333,83 +1389,83 @@ _0x25:
 	STD  Y+6+1,R27
 	MOV  R18,R30
 	CPI  R30,0
-	BREQ _0x27
+	BREQ _0x33
 	RCALL SUBOPT_0x4
-	RJMP _0x25
-_0x27:
-	RJMP _0x22
-_0x24:
+	RJMP _0x31
+_0x33:
+	RJMP _0x2E
+_0x30:
 	CPI  R30,LOW(0x70)
-	BRNE _0x29
+	BRNE _0x35
 	RCALL SUBOPT_0x5
 	RCALL SUBOPT_0x7
-_0x2A:
+_0x36:
 	LDD  R30,Y+6
 	LDD  R31,Y+6+1
 	ADIW R30,1
 	STD  Y+6,R30
 	STD  Y+6+1,R31
 	RCALL SUBOPT_0x3
-	BREQ _0x2C
+	BREQ _0x38
 	RCALL SUBOPT_0x4
-	RJMP _0x2A
-_0x2C:
-	RJMP _0x22
-_0x29:
+	RJMP _0x36
+_0x38:
+	RJMP _0x2E
+_0x35:
 	CPI  R30,LOW(0x64)
-	BREQ _0x2F
+	BREQ _0x3B
 	CPI  R30,LOW(0x69)
-	BRNE _0x30
-_0x2F:
+	BRNE _0x3C
+_0x3B:
 	ORI  R17,LOW(1)
-	RJMP _0x31
-_0x30:
+	RJMP _0x3D
+_0x3C:
 	CPI  R30,LOW(0x75)
-	BRNE _0x32
-_0x31:
+	BRNE _0x3E
+_0x3D:
 	LDI  R30,LOW(_tbl10_G2*2)
 	LDI  R31,HIGH(_tbl10_G2*2)
-	RJMP _0x46
-_0x32:
+	RJMP _0x52
+_0x3E:
 	CPI  R30,LOW(0x58)
-	BRNE _0x35
+	BRNE _0x41
 	ORI  R17,LOW(2)
-	RJMP _0x36
-_0x35:
+	RJMP _0x42
+_0x41:
 	CPI  R30,LOW(0x78)
 	BREQ PC+2
-	RJMP _0x45
-_0x36:
+	RJMP _0x51
+_0x42:
 	LDI  R30,LOW(_tbl16_G2*2)
 	LDI  R31,HIGH(_tbl16_G2*2)
-_0x46:
+_0x52:
 	STD  Y+6,R30
 	STD  Y+6+1,R31
 	SBRS R17,0
-	RJMP _0x38
+	RJMP _0x44
 	RCALL SUBOPT_0x5
 	LD   R20,X+
 	LD   R21,X
 	SUBI R20,0
 	SBCI R21,0
-	BRGE _0x39
+	BRGE _0x45
 	__GETW1R 20,21
 	RCALL __ANEGW1
 	__PUTW1R 20,21
 	LDI  R19,LOW(45)
-_0x39:
+_0x45:
 	CPI  R19,0
-	BREQ _0x3A
+	BREQ _0x46
 	ST   -Y,R19
 	RCALL SUBOPT_0x6
-_0x3A:
-	RJMP _0x3B
-_0x38:
+_0x46:
+	RJMP _0x47
+_0x44:
 	RCALL SUBOPT_0x5
 	LD   R20,X+
 	LD   R21,X
-_0x3B:
-_0x3D:
+_0x47:
+_0x49:
 	LDI  R18,LOW(48)
 	LDD  R30,Y+6
 	LDD  R31,Y+6+1
@@ -1430,46 +1486,46 @@ _0x3D:
 	                              brne calc_digit
                               calc_digit_done:
 	SBRC R17,4
-	RJMP _0x40
+	RJMP _0x4C
 	LDI  R30,LOW(48)
 	CP   R30,R18
-	BRLO _0x40
+	BRLO _0x4C
 	LDD  R26,Y+8
 	LDD  R27,Y+8+1
 	CPI  R26,LOW(0x1)
 	LDI  R30,HIGH(0x1)
 	CPC  R27,R30
-	BRNE _0x3F
-_0x40:
+	BRNE _0x4B
+_0x4C:
 	ORI  R17,LOW(16)
 	LDI  R30,LOW(57)
 	CP   R30,R18
-	BRSH _0x42
+	BRSH _0x4E
 	SBRS R17,1
-	RJMP _0x43
+	RJMP _0x4F
 	SUBI R18,-LOW(7)
-	RJMP _0x44
-_0x43:
+	RJMP _0x50
+_0x4F:
 	SUBI R18,-LOW(39)
-_0x44:
-_0x42:
+_0x50:
+_0x4E:
 	RCALL SUBOPT_0x4
-_0x3F:
+_0x4B:
 	LDD  R26,Y+8
 	LDD  R27,Y+8+1
 	LDI  R30,LOW(1)
 	LDI  R31,HIGH(1)
 	CP   R30,R26
 	CPC  R31,R27
-	BRSH _0x3E
-	RJMP _0x3D
-_0x3E:
-_0x45:
-_0x22:
+	BRSH _0x4A
+	RJMP _0x49
+_0x4A:
+_0x51:
+_0x2E:
 	LDI  R16,LOW(0)
-_0x11:
-	RJMP _0xC
-_0xE:
+_0x1D:
+	RJMP _0x18
+_0x1A:
 	RCALL __LOADLOCR6
 	ADIW R28,16
 	RET
@@ -1502,18 +1558,17 @@ _printf:
 	POP  R15
 	RET
 
-;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES
-SUBOPT_0x0:
-	IN   R30,0x18
-	LDI  R26,LOW(1)
-	EOR  R30,R26
-	OUT  0x18,R30
-	RET
-
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES
-SUBOPT_0x1:
+SUBOPT_0x0:
 	ST   -Y,R30
 	RJMP _putchar
+
+;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES
+SUBOPT_0x1:
+	LDI  R26,LOW(1)
+	EOR  R30,R26
+	RCALL __BSTB1
+	RET
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES
 SUBOPT_0x2:
@@ -1589,61 +1644,17 @@ __ANEGW1:
 	ADIW R30,1
 	RET
 
-__CWD1:
-	MOV  R22,R31
-	ADD  R22,R22
-	SBC  R22,R22
-	MOV  R23,R22
-	RET
-
-__DIVW21U:
-	CLR  R0
-	CLR  R1
-	LDI  R25,16
-__DIVW21U1:
-	LSL  R26
-	ROL  R27
-	ROL  R0
-	ROL  R1
-	SUB  R0,R30
-	SBC  R1,R31
-	BRCC __DIVW21U2
-	ADD  R0,R30
-	ADC  R1,R31
-	RJMP __DIVW21U3
-__DIVW21U2:
-	SBR  R26,1
-__DIVW21U3:
-	DEC  R25
-	BRNE __DIVW21U1
-	MOVW R30,R26
-	MOVW R26,R0
-	RET
-
-__DIVW21:
-	RCALL __CHKSIGNW
-	RCALL __DIVW21U
-	BRTC __DIVW211
-	RCALL __ANEGW1
-__DIVW211:
-	RET
-
-__CHKSIGNW:
-	CLT
-	SBRS R31,7
-	RJMP __CHKSW1
-	RCALL __ANEGW1
-	SET
-__CHKSW1:
-	SBRS R27,7
-	RJMP __CHKSW2
-	COM  R26
-	COM  R27
-	ADIW R26,1
-	BLD  R0,0
-	INC  R0
-	BST  R0,0
-__CHKSW2:
+__LSRW4:
+	LSR  R31
+	ROR  R30
+__LSRW3:
+	LSR  R31
+	ROR  R30
+__LSRW2:
+	LSR  R31
+	ROR  R30
+	LSR  R31
+	ROR  R30
 	RET
 
 __GETW1P:
@@ -1663,6 +1674,13 @@ __PUTPARD1:
 	ST   -Y,R22
 	ST   -Y,R31
 	ST   -Y,R30
+	RET
+
+__BSTB1:
+	CLT
+	CLR  R0
+	CPSE R30,R0
+	SET
 	RET
 
 __SAVELOCR6:
@@ -1689,6 +1707,17 @@ __LOADLOCR3:
 __LOADLOCR2:
 	LDD  R17,Y+1
 	LD   R16,Y
+	RET
+
+__INITLOCB:
+__INITLOCW:
+	ADD R26,R28
+	ADC R27,R29
+__INITLOC0:
+	LPM  R0,Z+
+	ST   X+,R0
+	DEC  R24
+	BRNE __INITLOC0
 	RET
 
 ;END OF CODE MARKER
