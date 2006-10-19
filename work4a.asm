@@ -986,230 +986,223 @@ __GLOBAL_INI_END:
 
 	.CSEG
 _read_adc:
-;      36 unsigned int counter0 = 16, counter1 = 16, result0=0, result1=0;
-;      37
-;      38 ADCSRA |= 0x20;
-	SBIW R28,2
-	LDI  R24,2
+;      36 unsigned int counter0 = 27, counter1 = 16;
+;      37 unsigned long int result0=0, result1=0;
+;      38
+;      39 ADCSRA |= 0x20;
+	SBIW R28,8
+	LDI  R24,8
 	LDI  R26,LOW(0)
 	LDI  R27,HIGH(0)
 	LDI  R30,LOW(_0x3*2)
 	LDI  R31,HIGH(_0x3*2)
 	RCALL __INITLOCB
-	RCALL __SAVELOCR6
+	RCALL __SAVELOCR4
 ;	counter0 -> R16,R17
 ;	counter1 -> R18,R19
-;	result0 -> R20,R21
-;	result1 -> Y+6
-	LDI  R16,16
+;	result0 -> Y+8
+;	result1 -> Y+4
+	LDI  R16,27
 	LDI  R17,0
 	LDI  R18,16
 	LDI  R19,0
-	LDI  R20,0
-	LDI  R21,0
 	SBI  0x6,5
-;      39 ADCSRA |= 0x40;
+;      40 ADCSRA |= 0x40;
 	SBI  0x6,6
-;      40
-;      41 while (counter0){
+;      41
+;      42 while (counter0){
 _0x4:
 	MOV  R0,R16
 	OR   R0,R17
 	BREQ _0x6
-;      42
-;      43 while (counter1){
+;      43
+;      44 while (counter1){
 _0x7:
 	MOV  R0,R18
 	OR   R0,R19
 	BREQ _0x9
-;      44 while ((ADCSRA & 0x10)==0);
+;      45 while ((ADCSRA & 0x10)==0);
 _0xA:
 	SBIS 0x6,4
 	RJMP _0xA
-;      45 ADCSRA |= 0x10;
+;      46 ADCSRA |= 0x10;
 	SBI  0x6,4
-;      46 result1 += ADCW;
+;      47 result1 += ADCW;
 	IN   R30,0x4
 	IN   R31,0x4+1
-	LDD  R26,Y+6
-	LDD  R27,Y+6+1
-	ADD  R30,R26
-	ADC  R31,R27
-	STD  Y+6,R30
-	STD  Y+6+1,R31
-;      47 counter1--;
+	__GETD2S 4
+	CLR  R22
+	CLR  R23
+	RCALL __ADDD12
+	__PUTD1S 4
+;      48 counter1--;
 	__SUBWRN 18,19,1
-;      48 }
+;      49 }
 	RJMP _0x7
 _0x9:
-;      49 result1 >>= 2;
-	LDD  R30,Y+6
-	LDD  R31,Y+6+1
-	RCALL __LSRW2
-	STD  Y+6,R30
-	STD  Y+6+1,R31
-;      50
-;      51 result0 += result1;
-	__ADDWRR 20,21,30,31
-;      52 result1 = 0;
-	LDI  R30,0
-	STD  Y+6,R30
-	STD  Y+6+1,R30
-;      53 counter1 = 16;
+;      50 result1 >>= 2;
+	__GETD2S 4
+	LDI  R30,LOW(2)
+	RCALL __LSRD12
+	__PUTD1S 4
+;      51
+;      52 result0 += result1;
+	__GETD2S 8
+	RCALL __ADDD12
+	__PUTD1S 8
+;      53 result1 = 0;
+	__CLRD1S 4
+;      54 counter1 = 16;
 	__GETWRN 18,19,16
-;      54 counter0--;
+;      55 counter0--;
 	__SUBWRN 16,17,1
-;      55 }
+;      56 }
 	RJMP _0x4
 _0x6:
-;      56 ADCSRA ^=0x20;
+;      57 ADCSRA ^=0x20;
 	IN   R30,0x6
 	LDI  R26,LOW(32)
 	EOR  R30,R26
 	OUT  0x6,R30
-;      57 result0 /= 16;
-	__GETW1R 20,21
-	RCALL __LSRW4
-	__PUTW1R 20,21
-;      58 return result0;
-	__GETW1R 20,21
-	RCALL __LOADLOCR6
-	ADIW R28,8
+;      58 result0 /= 27;
+	__GETD2S 8
+	__GETD1N 0x1B
+	RCALL __DIVD21U
+	__PUTD1S 8
+;      59 return result0;
+	RCALL __LOADLOCR4
+	ADIW R28,12
 	RET
-;      59 }
-;      60
-;      61 // Declare your global variables here
-;      62
-;      63 void init_devices(void){
+;      60 }
+;      61
+;      62 // Declare your global variables here
+;      63
+;      64 void init_devices(void){
 _init_devices:
-;      64 // Declare your local variables here
-;      65 PORTB=0x03;
+;      65 // Declare your local variables here
+;      66 PORTB=0x03; //pb0 - LED, pb1 - Switch
 	LDI  R30,LOW(3)
 	OUT  0x18,R30
-;      66 DDRB=0x01;
+;      67 DDRB=0x01;
 	LDI  R30,LOW(1)
 	OUT  0x17,R30
-;      67 PORTC=0x00;
+;      68 PORTC=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x15,R30
-;      68 DDRC=0x00;
+;      69 DDRC=0x00;
 	OUT  0x14,R30
-;      69 PORTD=0x80;
+;      70 PORTD=0x80; //pd7 - LED, pd2 - low
 	LDI  R30,LOW(128)
 	OUT  0x12,R30
-;      70 DDRD=0x80;
+;      71 DDRD=0x84;
+	LDI  R30,LOW(132)
 	OUT  0x11,R30
-;      71
-;      72 // Timer/Counter 0 initialization
-;      73 // Clock source: System Clock
-;      74 // Prescale: 1024 kHz
-;      75 //TCCR0 = 0x00; //stop
-;      76 //TCNT0 = 0xB8;//B8; //set count
-;      77 //TCCR0 = 0x02; //start timer
-;      78
+;      72
+;      73 // Timer/Counter 0 initialization
+;      74 // Clock source: System Clock
+;      75 // Prescale: 1024 kHz
+;      76 //TCCR0 = 0x00; //stop
+;      77 //TCNT0 = 0xB8;//B8; //set count
+;      78 //TCCR0 = 0x02; //start timer
 ;      79
-;      80 // External Interrupt(s) initialization
-;      81 // INT0: Off
-;      82 // INT1: Off
-;      83 MCUCR=0x00;
+;      80
+;      81 // External Interrupt(s) initialization
+;      82 // INT0: Off
+;      83 // INT1: Off
+;      84 MCUCR=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x35,R30
-;      84
-;      85 // Timer(s)/Counter(s) Interrupt(s) initialization
-;      86 //TIMSK=0x01;
-;      87
-;      88 // USART initialization
-;      89 // Communication Parameters: 8 Data, 1 Stop, No Parity
-;      90 // USART Receiver: Off
-;      91 // USART Transmitter: On
-;      92 // USART Mode: Asynchronous
-;      93 // USART Baud rate: 9600
-;      94
-;      95 //UCSRA=0x00;
-;      96 //UCSRB=0x00;
-;      97 //UCSRC=0x86;
-;      98 //UBRRL = 0x19; //set baud rate lo
-;      99 //UBRRH = 0x00; //set baud rate hi
-;     100 //UCSRB = 0x08;
-;     101
-;     102 // USART initialization
-;     103 // Communication Parameters: 8 Data, 1 Stop, No Parity
-;     104 // USART Receiver: Off
-;     105 // USART Transmitter: On
-;     106 // USART Mode: Asynchronous
-;     107 // USART Baud rate: 19200
-;     108 UCSRA=0x00;
+;      85
+;      86 // Timer(s)/Counter(s) Interrupt(s) initialization
+;      87 //TIMSK=0x01;
+;      88
+;      89 // USART initialization
+;      90 // Communication Parameters: 8 Data, 1 Stop, No Parity
+;      91 // USART Receiver: Off
+;      92 // USART Transmitter: On
+;      93 // USART Mode: Asynchronous
+;      94 // USART Baud rate: 9600
+;      95
+;      96 //UCSRA=0x00;
+;      97 //UCSRB=0x00;
+;      98 //UCSRC=0x86;
+;      99 //UBRRL = 0x19; //set baud rate lo
+;     100 //UBRRH = 0x00; //set baud rate hi
+;     101 //UCSRB = 0x08;
+;     102
+;     103 // USART initialization
+;     104 // Communication Parameters: 8 Data, 1 Stop, No Parity
+;     105 // USART Receiver: Off
+;     106 // USART Transmitter: On
+;     107 // USART Mode: Asynchronous
+;     108 // USART Baud rate: 19200
+;     109 UCSRA=0x00;
 	OUT  0xB,R30
-;     109 UCSRB=0x00;
+;     110 UCSRB=0x00;
 	OUT  0xA,R30
-;     110 UCSRC=0x86;
+;     111 UCSRC=0x86;
 	LDI  R30,LOW(134)
 	OUT  0x20,R30
-;     111 UBRRH=0x00;
+;     112 UBRRH=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x20,R30
-;     112 UBRRL=0x0C;
+;     113 UBRRL=0x0C;
 	LDI  R30,LOW(12)
 	OUT  0x9,R30
-;     113 UCSRB=0x08;
+;     114 UCSRB=0x08;
 	LDI  R30,LOW(8)
 	OUT  0xA,R30
-;     114
-;     115 // Analog Comparator initialization
-;     116 // Analog Comparator: Off
-;     117 // Analog Comparator Input Capture by Timer/Counter 1: Off
-;     118 ACSR=0x80;
+;     115
+;     116 // Analog Comparator initialization
+;     117 // Analog Comparator: Off
+;     118 // Analog Comparator Input Capture by Timer/Counter 1: Off
+;     119 ACSR=0x80;
 	LDI  R30,LOW(128)
 	OUT  0x8,R30
-;     119 SFIOR=0x00;
+;     120 SFIOR=0x00;
 	LDI  R30,LOW(0)
 	OUT  0x30,R30
-;     120
-;     121 // ADC initialization
-;     122 // ADC Clock frequency: 125,000 kHz
-;     123 // ADC Voltage Reference: internal
-;     124 ADMUX=0xC0; //internal reference
-	LDI  R30,LOW(192)
+;     121
+;     122 // ADC initialization
+;     123 // ADC Clock frequency: 125,000 kHz
+;     124 // ADC Voltage Reference: internal
+;     125 ADMUX=0xC1; //internal reference; ADC1
+	LDI  R30,LOW(193)
 	OUT  0x7,R30
-;     125 //ADMUX=0x40; //AVCC
-;     126 //ADCSRA=0x8D; // INT
-;     127
-;     128 ADCSRA=0x85; //freerunning
+;     126 //ADMUX=0x40; //AVCC
+;     127 //ADCSRA=0x8D; // INT
+;     128
+;     129 ADCSRA=0x85; //freerunning
 	LDI  R30,LOW(133)
 	OUT  0x6,R30
-;     129
-;     130 // Global enable interrupts
-;     131 #asm("sei")
+;     130
+;     131 // Global enable interrupts
+;     132 #asm("sei")
 	sei
-;     132 }
+;     133 }
 	RET
-;     133
 ;     134
-;     135 void main(void){
+;     135
+;     136 void main(void){
 _main:
-;     136
-;     137 init_devices();
+;     137
+;     138 init_devices();
 	RCALL _init_devices
-;     138 PORTB.0 = 1;
+;     139 PORTB.0 = 1;
 	SBI  0x18,0
-;     139 PORTD.7 = 0;
+;     140 PORTD.7 = 0;
 	CBI  0x12,7
-;     140
 ;     141
-;     142 while (1)
+;     142
+;     143 while (1)
 _0xD:
-;     143 {
-;     144
-;     145   if (sample){
+;     144 {
+;     145
+;     146   if (sample){
 	SBRS R2,0
 	RJMP _0x10
-;     146         delay_ms(20);
-	LDI  R30,LOW(20)
-	LDI  R31,HIGH(20)
-	ST   -Y,R31
-	ST   -Y,R30
-	RCALL _delay_ms
-;     147         printf("C0.%i\n",read_adc());
+;     147         //delay_ms(20);
+;     148         printf("%i\n",read_adc());
 	__POINTW1FN _0,0
 	ST   -Y,R31
 	ST   -Y,R30
@@ -1220,22 +1213,22 @@ _0xD:
 	LDI  R24,4
 	RCALL _printf
 	ADIW R28,6
-;     148         putchar(0x0D);
+;     149         putchar(0x0D);
 	LDI  R30,LOW(13)
 	RCALL SUBOPT_0x0
-;     149   }
-;     150
-;     151   if (!PINB.1) {
+;     150   }
+;     151
+;     152   if (!PINB.1) {
 _0x10:
 	SBIC 0x16,1
 	RJMP _0x11
-;     152         sample ^= 1;
+;     153         sample ^= 1;
 	LDI  R30,0
 	SBRC R2,0
 	LDI  R30,1
 	RCALL SUBOPT_0x1
 	BLD  R2,0
-;     153         PORTB.0 ^= 1;
+;     154         PORTB.0 ^= 1;
 	LDI  R30,0
 	SBIC 0x18,0
 	LDI  R30,1
@@ -1243,7 +1236,7 @@ _0x10:
 	IN   R26,0x18
 	BLD  R26,0
 	OUT  0x18,R26
-;     154         PORTD.7 ^= 1;
+;     155         PORTD.7 ^= 1;
 	LDI  R30,0
 	SBIC 0x12,7
 	LDI  R30,1
@@ -1251,20 +1244,19 @@ _0x10:
 	IN   R26,0x12
 	BLD  R26,7
 	OUT  0x12,R26
-;     155         while (!PINB.1);
+;     156         while (!PINB.1);
 _0x12:
 	SBIS 0x16,1
 	RJMP _0x12
-;     156   }
-;     157
+;     157   }
 ;     158
-;     159 }
+;     159
+;     160 }
 _0x11:
 	RJMP _0xD
-;     160 }
+;     161 }
 _0x15:
 	RJMP _0x15
-;     161
 ;     162
 ;     163
 ;     164
@@ -1273,6 +1265,7 @@ _0x15:
 ;     167
 ;     168
 ;     169
+;     170
 
 _getchar:
      sbis usr,rxc
@@ -1619,23 +1612,17 @@ SUBOPT_0x7:
 	STD  Y+6+1,R31
 	RET
 
-_delay_ms:
-	ld   r30,y+
-	ld   r31,y+
-	adiw r30,0
-	breq __delay_ms1
-__delay_ms0:
-	__DELAY_USW 0x3E8
-	wdr
-	sbiw r30,1
-	brne __delay_ms0
-__delay_ms1:
-	ret
-
 __ADDW2R15:
 	CLR  R0
 	ADD  R26,R15
 	ADC  R27,R0
+	RET
+
+__ADDD12:
+	ADD  R30,R26
+	ADC  R31,R27
+	ADC  R22,R24
+	ADC  R23,R25
 	RET
 
 __ANEGW1:
@@ -1644,17 +1631,63 @@ __ANEGW1:
 	ADIW R30,1
 	RET
 
-__LSRW4:
-	LSR  R31
+__LSRD12:
+	TST  R30
+	MOV  R0,R30
+	MOVW R30,R26
+	MOVW R22,R24
+	BREQ __LSRD12R
+__LSRD12L:
+	LSR  R23
+	ROR  R22
+	ROR  R31
 	ROR  R30
-__LSRW3:
-	LSR  R31
-	ROR  R30
-__LSRW2:
-	LSR  R31
-	ROR  R30
-	LSR  R31
-	ROR  R30
+	DEC  R0
+	BRNE __LSRD12L
+__LSRD12R:
+	RET
+
+__DIVD21U:
+	PUSH R19
+	PUSH R20
+	PUSH R21
+	CLR  R0
+	CLR  R1
+	CLR  R19
+	CLR  R20
+	LDI  R21,32
+__DIVD21U1:
+	LSL  R26
+	ROL  R27
+	ROL  R24
+	ROL  R25
+	ROL  R0
+	ROL  R1
+	ROL  R19
+	ROL  R20
+	SUB  R0,R30
+	SBC  R1,R31
+	SBC  R19,R22
+	SBC  R20,R23
+	BRCC __DIVD21U2
+	ADD  R0,R30
+	ADC  R1,R31
+	ADC  R19,R22
+	ADC  R20,R23
+	RJMP __DIVD21U3
+__DIVD21U2:
+	SBR  R26,1
+__DIVD21U3:
+	DEC  R21
+	BRNE __DIVD21U1
+	MOVW R30,R26
+	MOVW R22,R24
+	MOVW R26,R0
+	MOV  R24,R19
+	MOV  R25,R20
+	POP  R21
+	POP  R20
+	POP  R19
 	RET
 
 __GETW1P:

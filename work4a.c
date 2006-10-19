@@ -20,6 +20,10 @@ Clock frequency     : 4,000000 MHz
 Memory model        : Small
 External SRAM size  : 0
 Data Stack size     : 256
+
+02.09.06 - Double LED is connected to PB0, PD7
+19.10.06 - Low output at PD02 as DTR output signal
+
 *****************************************************/
 
 #include <mega8.h>
@@ -33,7 +37,8 @@ bit sample=0;
 
 unsigned int read_adc(void)
 {
-unsigned int counter0 = 16, counter1 = 16, result0=0, result1=0;
+unsigned int counter0 = 27, counter1 = 16;
+unsigned long int result0=0, result1=0;
 
 ADCSRA |= 0x20;
 ADCSRA |= 0x40;
@@ -54,7 +59,7 @@ counter1 = 16;
 counter0--;
 }
 ADCSRA ^=0x20;
-result0 /= 16;
+result0 /= 27;
 return result0;
 }
 
@@ -62,12 +67,12 @@ return result0;
 
 void init_devices(void){
 // Declare your local variables here
-PORTB=0x03;
+PORTB=0x03; //pb0 - LED, pb1 - Switch
 DDRB=0x01;
 PORTC=0x00;
 DDRC=0x00;
-PORTD=0x80;
-DDRD=0x80;
+PORTD=0x80; //pd7 - LED, pd2 - low
+DDRD=0x84;
 
 // Timer/Counter 0 initialization
 // Clock source: System Clock
@@ -121,7 +126,7 @@ SFIOR=0x00;
 // ADC initialization
 // ADC Clock frequency: 125,000 kHz
 // ADC Voltage Reference: internal
-ADMUX=0xC0; //internal reference
+ADMUX=0xC1; //internal reference; ADC1
 //ADMUX=0x40; //AVCC
 //ADCSRA=0x8D; // INT
 
@@ -143,8 +148,8 @@ while (1)
 {
 
   if (sample){
-        delay_ms(20);
-        printf("C0.%i\n",read_adc());
+        //delay_ms(20);
+        printf("%i\n",read_adc());
         putchar(0x0D);
   }
 
