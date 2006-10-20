@@ -23,6 +23,7 @@ Data Stack size     : 256
 
 02.09.06 - Double LED is connected to PB0, PD7
 19.10.06 - Low output at PD02 as DTR output signal
+20.10.06 - Monitoring PD3 and activate device on High input
 
 *****************************************************/
 
@@ -32,7 +33,7 @@ Data Stack size     : 256
 #include <stdio.h>
 #include <delay.h>
 
-bit sample=0;
+bit sample=0, firsttime=1;
 
 
 unsigned int read_adc(void)
@@ -67,11 +68,11 @@ return result0;
 
 void init_devices(void){
 // Declare your local variables here
-PORTB=0x03; //pb0 - LED, pb1 - Switch
+PORTB=0x02; //pb0 - LED, pb1 - Switch
 DDRB=0x01;
 PORTC=0x00;
 DDRC=0x00;
-PORTD=0x80; //pd7 - LED, pd2 - low
+PORTD=0x0C; //pd7 - LED, pd2 - low, pd3 - input
 DDRD=0x84;
 
 // Timer/Counter 0 initialization
@@ -127,6 +128,7 @@ SFIOR=0x00;
 // ADC Clock frequency: 125,000 kHz
 // ADC Voltage Reference: internal
 ADMUX=0xC1; //internal reference; ADC1
+//ADMUX=0xCE; //internal reference; 1.23 bg
 //ADMUX=0x40; //AVCC
 //ADCSRA=0x8D; // INT
 
@@ -140,26 +142,38 @@ ADCSRA=0x85; //freerunning
 void main(void){
 
 init_devices();
-PORTB.0 = 1;
-PORTD.7 = 0;
-
 
 while (1)
 {
 
-  if (sample){
-        //delay_ms(20);
-        printf("%i\n",read_adc());
-        putchar(0x0D);
-  }
+ if (!PIND.3){
 
-  if (!PINB.1) {
-        sample ^= 1;
-        PORTB.0 ^= 1;
-        PORTD.7 ^= 1;
-        while (!PINB.1);
-  }
+          if (firsttime){
+          PORTB.0 = 1;
+          PORTD.7 = 0;
+          PORTD.2 = 0;
+          firsttime=0;
+          }
 
+          if (sample){
+                //delay_ms(20);
+                printf("%i\n",read_adc());
+                putchar(0x0D);
+          }
+
+          if (!PINB.1) {
+                sample ^= 1;
+                PORTB.0 ^= 1;
+                PORTD.7 ^= 1;
+                while (!PINB.1);
+          }
+  }else{
+  sample = 0;
+  PORTB.0 = 0;
+  PORTD.7 = 0;
+  PORTD.2 = 1;
+  firsttime=1;
+  }
 
 }
 }
