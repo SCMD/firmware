@@ -29,7 +29,7 @@ Data Stack size     : 256
 // CodeVisionAVR C Compiler
 // (C) 1998-2004 Pavel Haiduc, HP InfoTech S.R.L.
 // I/O registers definitions for the ATmega8
-#pragma used+
+#pragma used+
 #pragma used+
 sfrb TWBR=0;
 sfrb TWSR=1;
@@ -100,7 +100,7 @@ sfrb SPH=0x3e;
 sfrb SREG=0x3f;
 #pragma used-
 // Interrupt vectors definitions
-// Needed by the power management functions (sleep.h)
+// Needed by the power management functions (sleep.h)
 #asm
 	#ifndef __SLEEP_DEFINED__
 	#define __SLEEP_DEFINED__
@@ -114,17 +114,17 @@ sfrb SREG=0x3f;
 	.SET power_ctrl_reg=mcucr
 	#endif
 #endasm
-// Standard Input/Output functions
+// Standard Input/Output functions
 // CodeVisionAVR C Compiler
 // (C) 1998-2006 Pavel Haiduc, HP InfoTech S.R.L.
 // Prototypes for standard I/O functions
-// CodeVisionAVR C Compiler
+// CodeVisionAVR C Compiler
 // (C) 1998-2002 Pavel Haiduc, HP InfoTech S.R.L.
 // Variable length argument list macros
-typedef char *va_list;
+typedef char *va_list;
 typedef char *va_list;
 typedef char *va_list;
-#pragma used+
+#pragma used+
 char getchar(void);
 void putchar(char c);
 void puts(char *str);
@@ -138,17 +138,17 @@ void vsprintf (char *str, char flash * fmtstr, va_list argptr);
 void vsnprintf (char *str, unsigned int size, char flash * fmtstr, va_list argptr);
 signed char scanf(char flash *fmtstr,...);
 signed char sscanf(char *str, char flash *fmtstr,...);
-                                               #pragma used-
+                                               #pragma used-
 #pragma library stdio.lib
-// CodeVisionAVR C Compiler
+// CodeVisionAVR C Compiler
 // (C) 1998-2000 Pavel Haiduc, HP InfoTech S.R.L.
-#pragma used+
+#pragma used+
 #pragma used+
 void delay_us(unsigned int n);
 void delay_ms(unsigned int n);
 #pragma used-
-bit sample=0, firsttime=1;
-unsigned int read_adc(void)
+bit sample=0, firsttime=1;
+unsigned int read_adc(void)
 {
 unsigned int counter0 = 27, counter1 = 16;
 unsigned long int result0=0, result1=0;
@@ -186,7 +186,7 @@ DDRD=0x84;
 //TCCR0 = 0x00; //stop
 //TCNT0 = 0xB8;//B8; //set count
 //TCCR0 = 0x02; //start timer
-// External Interrupt(s) initialization
+// External Interrupt(s) initialization
 // INT0: Off
 // INT1: Off
 MCUCR=0x00;
@@ -232,7 +232,7 @@ ADCSRA=0x85; //freerunning
 // Global enable interrupts
 #asm("sei")
 }
-void main(void){
+void main(void){
 init_devices();
 while (1)
 {

@@ -21,9 +21,10 @@ Memory model        : Small
 External SRAM size  : 0
 Data Stack size     : 256
 
-02.09.06 - Double LED is connected to PB0, PD7
-19.10.06 - Low output at PD02 as DTR output signal
+02.09.06 - Double LED is connected to PB0, PD7, switch is connected to PD6
+19.10.06 - Low output at PD2 as DTR output signal
 20.10.06 - Monitoring PD3 and activate device on High input
+04.04.07 - 4 channel mode (adc0 as A, adc1 as B ... adc3 as D) swtches consequently
 
 *****************************************************/
 
@@ -34,11 +35,12 @@ Data Stack size     : 256
 #include <delay.h>
 
 bit sample=0, firsttime=1;
+char channel[]="ABCD";
 
 
 unsigned int read_adc(void)
 {
-unsigned int counter0 = 27, counter1 = 16;
+unsigned int counter0 = 6, counter1 = 16;
 unsigned long int result0=0, result1=0;
 
 ADCSRA |= 0x20;
@@ -60,7 +62,7 @@ counter1 = 16;
 counter0--;
 }
 ADCSRA ^=0x20;
-result0 /= 27;
+result0 /= 6;
 return result0;
 }
 
@@ -68,11 +70,11 @@ return result0;
 
 void init_devices(void){
 // Declare your local variables here
-PORTB=0x02; //pb0 - LED, pb1 - Switch
+PORTB=0x01; //pb0 - LED
 DDRB=0x01;
 PORTC=0x00;
 DDRC=0x00;
-PORTD=0x0C; //pd7 - LED, pd2 - low, pd3 - input
+PORTD=0x4C; //pd7 - LED, pd2 - low, pd3 - input, pb6 - Switch
 DDRD=0x84;
 
 // Timer/Counter 0 initialization
@@ -127,8 +129,7 @@ SFIOR=0x00;
 // ADC initialization
 // ADC Clock frequency: 125,000 kHz
 // ADC Voltage Reference: internal
-ADMUX=0xC1; //internal reference; ADC1
-//ADMUX=0xCE; //internal reference; 1.23 bg
+ADMUX=0xC0; //internal reference; ADC1
 //ADMUX=0x40; //AVCC
 //ADCSRA=0x8D; // INT
 
@@ -146,7 +147,7 @@ init_devices();
 while (1)
 {
 
- if (!PIND.3){
+  if (!PIND.3){
 
           if (firsttime){
           PORTB.0 = 1;
@@ -157,15 +158,17 @@ while (1)
 
           if (sample){
                 //delay_ms(20);
-                printf("%i\n",read_adc());
+                printf("%c%i\n",channel[ADMUX&7],read_adc());
                 putchar(0x0D);
+                ADMUX++;
+                if (ADMUX == 0xC4) ADMUX = 0xC0;
           }
 
-          if (!PINB.1) {
+          if (!PIND.6) {
                 sample ^= 1;
                 PORTB.0 ^= 1;
                 PORTD.7 ^= 1;
-                while (!PINB.1);
+                while (!PIND.6);
           }
   }else{
   sample = 0;
