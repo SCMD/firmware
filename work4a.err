@@ -7,10 +7,10 @@ Including  'work4a.vec'
 Including  'work4a.inc'
 
 Program memory usage:
-Code             :  637 words
-Constants (dw/db):   27 words
+Code             :  605 words
+Constants (dw/db):   26 words
 Unused           :    0 words
-Total            :  664 words
+Total            :  631 words
 
 Assembly complete with no errors.
 Deleting   'work4a.eep'
